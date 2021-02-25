@@ -33,8 +33,12 @@ module NoBrainer::Document::Association::EagerLoader
   def eager_load_association(docs, association_name, criteria=nil)
     docs = docs.compact
     return [] if docs.empty?
-    meta = docs.first.root_class.association_metadata
-    association = meta[association_name.to_sym] || meta[association_name.to_s.singularize.to_sym]
+
+    meta = docs.first.class.association_metadata
+    root_meta = docs.first.root_class.association_metadata
+    association = meta[association_name.to_sym] || root_meta[association_name.to_sym] ||
+      meta[association_name.to_s.singularize.to_sym] || root_meta[association_name.to_s.singularize.to_sym]
+
     raise "Unknown association #{association_name}" unless association
     association.eager_load(docs, criteria)
   end
