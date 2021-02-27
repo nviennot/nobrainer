@@ -2,13 +2,20 @@ class NoBrainer::Document::Association::BelongsTo
   include NoBrainer::Document::Association::Core
 
   class Metadata
-    VALID_OPTIONS = [:primary_key, :foreign_key, :class_name, :foreign_key_store_as,
-                     :index, :validates, :required, :uniq, :unique]
+    VALID_OPTIONS = %i[
+      primary_key foreign_key foreign_type class_name foreign_key_store_as
+      index validates required uniq unique polymorphic
+    ]
+
     include NoBrainer::Document::Association::Core::Metadata
     include NoBrainer::Document::Association::EagerLoader::Generic
 
     def foreign_key
       options[:foreign_key].try(:to_sym) || :"#{target_name}_#{primary_key}"
+    end
+
+    def foreign_type
+      options[:foreign_type].try(:to_sym) || :"#{target_name}_type"
     end
 
     def primary_key
@@ -30,12 +37,17 @@ class NoBrainer::Document::Association::BelongsTo
       end
     end
 
-    def target_model
-      get_model_by_name(options[:class_name] || target_name.to_s.camelize)
+    def target_model(target_class = nil)
+      return if options[:polymorphic] && target_class.nil?
+
+      model_name = options[:class_name] || target_name.to_s.camelize
+      model_name = target_class if options[:polymorphic]
+
+      get_model_by_name(model_name)
     end
 
-    def base_criteria
-      target_model.without_ordering
+    def base_criteria(target_class = nil)
+      target_model(target_class)&.without_ordering
     end
 
     def hook
@@ -47,6 +59,11 @@ class NoBrainer::Document::Association::BelongsTo
         raise "Cannot declare `#{target_name}' in #{owner_model}: the foreign_key `#{foreign_key}' is already used"
       end
 
+      if options[:polymorphic] && options[:class_name]
+        raise 'You cannot set class_name on a polymorphic belongs_to'
+      end
+
+      owner_model.field(foreign_type) if options[:polymorphic]
       owner_model.field(foreign_key, :store_as => options[:foreign_key_store_as], :index => options[:index])
 
       unless options[:validates] == false
@@ -97,12 +114,28 @@ class NoBrainer::Document::Association::BelongsTo
     @target_container = nil
   end
 
+  def polymorphic_read
+    return target if loaded?
+
+    target_class = owner.read_attribute(foreign_type)
+
+    if fk = owner.read_attribute(foreign_key)
+      preload(base_criteria(target_class)&.where(primary_key => fk)&.first)
+    end
+  end
+
   def read
     return target if loaded?
 
     if fk = owner.read_attribute(foreign_key)
       preload(base_criteria.where(primary_key => fk).first)
     end
+  end
+
+  def polymorphic_write(target)
+    owner.write_attribute(foreign_key, target.try(primary_key))
+    owner.write_attribute(foreign_type, target.root_class.name)
+    preload(target)
   end
 
   def write(target)
