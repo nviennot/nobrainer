@@ -100,16 +100,20 @@ module ModelsHelper
   end
 
   def load_belongs_to_polymorphic_models
-    define_class :Logo do
+    define_class :Image do
       include NoBrainer::Document
+
+      field :mime
 
       belongs_to :imageable, polymorphic: true
     end
 
-    define_class :Picture do
+    define_class :Logo, Image do
       include NoBrainer::Document
+    end
 
-      belongs_to :imageable, polymorphic: true
+    define_class :Picture, Image do
+      include NoBrainer::Document
     end
 
     define_class :Event do

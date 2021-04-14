@@ -7,7 +7,9 @@ describe 'belongs_to polymorphic' do
   end
 
   let(:event) { Event.create }
-  let!(:pictures) { 3.times.map { Picture.create(imageable: restaurant) } }
+  let!(:pictures) do
+    3.times.map { Picture.create(imageable: restaurant, mime: 'image/png') }
+  end
   let(:restaurant) { Restaurant.create }
 
   context 'setting polymorphic: true and class_name' do
@@ -69,7 +71,7 @@ describe 'belongs_to polymorphic' do
 
   context 'creating a polymorphic model document' do
     it 'saves the model class as type and model id' do
-      picture = Picture.create(imageable: restaurant)
+      picture = Picture.create(imageable: restaurant, mime: 'image/jpeg')
 
       expect(picture.imageable_type).to eql(restaurant.class.name)
       # `imageable__id_` instead of imageable_id since the primary key
@@ -83,7 +85,8 @@ describe 'belongs_to polymorphic' do
       # Do not use the imageable setter in order to prevent from loading it and
       # being sure to pass into the polymorphic_read method, after the loaded?
       logo = Logo.create(imageable_type: 'Restaurant',
-                         imageable__id_: restaurant._id_)
+                         imageable__id_: restaurant._id_,
+                         mime: 'image/png')
 
       expect(Restaurant.find(restaurant._id_).logo).to eql(Logo.find(logo._id_))
     end
@@ -91,12 +94,12 @@ describe 'belongs_to polymorphic' do
 
   context 'accessing a has_many polymorphic model document' do
     it 'returns the associated documents' do
-      picture1 = Picture.create(imageable: restaurant)
-      picture2 = Picture.create(imageable: restaurant)
+      picture1 = Picture.create(imageable: restaurant, mime: 'image/png')
+      picture2 = Picture.create(imageable: restaurant, mime: 'image/png')
 
       expect(restaurant.pictures.to_a).to eql(pictures | [picture1, picture2])
 
-      picture3 = Picture.create(imageable: event)
+      picture3 = Picture.create(imageable: event, mime: 'image/png')
 
       expect(event.photos.to_a).to eql([picture3])
     end
@@ -107,9 +110,9 @@ describe 'belongs_to polymorphic' do
       restaurant_event1 = Event.create(restaurant: restaurant)
       restaurant_event2 = Event.create(restaurant: restaurant)
 
-      picture1 = Picture.create(imageable: restaurant_event1)
-      picture2 = Picture.create(imageable: restaurant_event1)
-      picture3 = Picture.create(imageable: restaurant_event2)
+      picture1 = Picture.create(imageable: restaurant_event1, mime: 'image/png')
+      picture2 = Picture.create(imageable: restaurant_event1, mime: 'image/png')
+      picture3 = Picture.create(imageable: restaurant_event2, mime: 'image/png')
 
       expect(restaurant.photos.to_a).to eql([picture1, picture2, picture3])
     end
