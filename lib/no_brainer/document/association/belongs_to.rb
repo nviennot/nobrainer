@@ -15,7 +15,9 @@ class NoBrainer::Document::Association::BelongsTo
     end
 
     def foreign_type
-      options[:foreign_type].try(:to_sym) || :"#{target_name}_type"
+      return nil unless options[:polymorphic]
+
+      options[:foreign_type].try(:to_sym) || (target_name && :"#{target_name}_type")
     end
 
     def primary_key
@@ -102,6 +104,7 @@ class NoBrainer::Document::Association::BelongsTo
     end
 
     def eager_load_owner_key;  foreign_key; end
+    def eager_load_owner_type; foreign_type; end
     def eager_load_target_key; primary_key; end
   end
 

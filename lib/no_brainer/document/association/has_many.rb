@@ -15,7 +15,7 @@ class NoBrainer::Document::Association::HasMany
     end
 
     def foreign_type
-      options[:foreign_type].try(:to_sym) || :"#{options[:as]}_type"
+      options[:foreign_type].try(:to_sym) || (options[:as] && :"#{options[:as]}_type")
     end
 
     def primary_key
@@ -62,6 +62,7 @@ class NoBrainer::Document::Association::HasMany
     end
 
     def eager_load_owner_key;  primary_key; end
+    def eager_load_owner_type; foreign_type; end
     def eager_load_target_key; foreign_key; end
   end
 

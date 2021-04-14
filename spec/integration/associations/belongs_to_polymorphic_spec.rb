@@ -7,6 +7,7 @@ describe 'belongs_to polymorphic' do
   end
 
   let(:event) { Event.create }
+  let!(:pictures) { 3.times.map { Picture.create(imageable: restaurant) } }
   let(:restaurant) { Restaurant.create }
 
   context 'setting polymorphic: true and class_name' do
@@ -24,6 +25,15 @@ describe 'belongs_to polymorphic' do
       doc = Picture.create
       expect { doc.save! }.to raise_error(NoBrainer::Error::DocumentInvalid)
       doc.errors.full_messages.first.should == "Picturable can't be blank"
+    end
+  end
+
+  context 'when eager loading on a belongs_to association' do
+    it 'eagers load' do
+      expect(NoBrainer).to receive(:run).and_call_original.exactly(2).times
+      Picture.eager_load(:imageable).each do |picture|
+        expect(picture.imageable).to eql(restaurant)
+      end
     end
   end
 
@@ -84,7 +94,7 @@ describe 'belongs_to polymorphic' do
       picture1 = Picture.create(imageable: restaurant)
       picture2 = Picture.create(imageable: restaurant)
 
-      expect(restaurant.pictures.to_a).to eql([picture1, picture2])
+      expect(restaurant.pictures.to_a).to eql(pictures | [picture1, picture2])
 
       picture3 = Picture.create(imageable: event)
 
