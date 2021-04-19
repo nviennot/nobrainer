@@ -16,6 +16,7 @@ module NoBrainer::Criteria::Join
         association = model.association_metadata[k.to_sym]
         raise "`#{k}' must be an association on `#{model}'" unless association
         raise "join() does not support through associations" if association.options[:through]
+        raise "join() does not support polymorphic associations" if association.options[:polymorphic]
 
         criteria = association.base_criteria
         criteria = case v

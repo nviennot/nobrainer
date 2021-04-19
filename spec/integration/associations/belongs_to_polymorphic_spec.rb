@@ -117,4 +117,18 @@ describe 'belongs_to polymorphic' do
       expect(restaurant.photos.to_a).to eql([picture1, picture2, picture3])
     end
   end
+
+  context 'joining on the imageable belongs_to' do
+    it 'fails' do
+      expect do
+        Picture.join(:imageable).map(&:imageable)
+      end.to raise_error(/join().*polymorphic/)
+    end
+  end
+
+  context 'joining on a has_many as: :imageable' do
+    it 'joins' do
+      expect(Restaurant.join(:pictures).flat_map(&:pictures)).to eql(pictures)
+    end
+  end
 end
