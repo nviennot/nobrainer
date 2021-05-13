@@ -49,13 +49,13 @@ class NoBrainer::Document::Association::HasMany
 
       if options[:scope]
         raise ":scope must be passed a lambda like this: `:scope => ->{ where(...) }'" unless options[:scope].is_a?(Proc)
-        raise ':dependent and :scope cannot be used together' if options[:dependent]
+        raise ":dependent and :scope cannot be used together" if options[:dependent]
       end
 
       if options[:dependent]
         unless [:destroy, :delete, :nullify, :restrict, nil].include?(options[:dependent])
           raise "Invalid dependent option: `#{options[:dependent].inspect}'. " \
-                'Valid options are: :destroy, :delete, :nullify, or :restrict'
+                "Valid options are: :destroy, :delete, :nullify, or :restrict"
         end
         add_callback_for(:before_destroy)
       end

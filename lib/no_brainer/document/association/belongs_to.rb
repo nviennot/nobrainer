@@ -17,7 +17,7 @@ class NoBrainer::Document::Association::BelongsTo
     def foreign_type
       return nil unless options[:polymorphic]
 
-      options[:foreign_type].try(:to_sym) || (target_name && :"#{target_name}_type")
+      options[:foreign_type].try(:to_sym) || (:"#{target_name}_type")
     end
 
     def primary_key
@@ -42,8 +42,11 @@ class NoBrainer::Document::Association::BelongsTo
     def target_model(target_class = nil)
       return if options[:polymorphic] && target_class.nil?
 
-      model_name = options[:class_name] || target_name.to_s.camelize
-      model_name = target_class if options[:polymorphic]
+      model_name = if options[:polymorphic]
+                     target_class
+                   else
+                     options[:class_name] || target_name.to_s.camelize
+                   end
 
       get_model_by_name(model_name)
     end
@@ -121,9 +124,10 @@ class NoBrainer::Document::Association::BelongsTo
     return target if loaded?
 
     target_class = owner.read_attribute(foreign_type)
+    fk = owner.read_attribute(foreign_key)
 
-    if fk = owner.read_attribute(foreign_key)
-      preload(base_criteria(target_class)&.where(primary_key => fk)&.first)
+    if target_class && fk
+      preload(base_criteria(target_class).where(primary_key => fk).first)
     end
   end
 
