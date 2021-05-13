@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dockerfile, docker-compose and Earthfile
 - Test Ruby 3 + Rails 6 on Travis CI
 - Implements the ReQL `during` command
+- Implements polymorphic associations
 
 ## [0.34.1] - 2021-02-18
 ### Fixed

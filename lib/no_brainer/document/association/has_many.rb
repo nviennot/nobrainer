@@ -2,12 +2,20 @@ class NoBrainer::Document::Association::HasMany
   include NoBrainer::Document::Association::Core
 
   class Metadata
-    VALID_OPTIONS = [:primary_key, :foreign_key, :class_name, :dependent, :scope]
+    VALID_OPTIONS = [:primary_key, :foreign_key, :class_name, :dependent, :scope,
+                     :as]
     include NoBrainer::Document::Association::Core::Metadata
     include NoBrainer::Document::Association::EagerLoader::Generic
 
     def foreign_key
-      options[:foreign_key].try(:to_sym) || :"#{owner_model.name.split('::').last.underscore}_#{primary_key}"
+      return options[:foreign_key].try(:to_sym) if options.key?(:foreign_key)
+      return :"#{options[:as]}_#{primary_key}" if options[:as]
+
+      :"#{owner_model.name.split('::').last.underscore}_#{primary_key}"
+    end
+
+    def foreign_type
+      options[:foreign_type].try(:to_sym) || (options[:as] && :"#{options[:as]}_type")
     end
 
     def primary_key
@@ -30,9 +38,9 @@ class NoBrainer::Document::Association::HasMany
       # caching is hard (rails console reload, etc.).
       target_model.association_metadata.values.select do |assoc|
         assoc.is_a?(NoBrainer::Document::Association::BelongsTo::Metadata) and
-        assoc.foreign_key == self.foreign_key                              and
-        assoc.primary_key == self.primary_key                              and
-        assoc.target_model.root_class == owner_model.root_class
+        assoc.foreign_key == foreign_key                                   and
+        assoc.primary_key == primary_key                                   and
+        assoc.target_model(target_model).root_class == owner_model.root_class
       end
     end
 
@@ -46,7 +54,7 @@ class NoBrainer::Document::Association::HasMany
 
       if options[:dependent]
         unless [:destroy, :delete, :nullify, :restrict, nil].include?(options[:dependent])
-          raise "Invalid dependent option: `#{options[:dependent].inspect}'. " +
+          raise "Invalid dependent option: `#{options[:dependent].inspect}'. " \
                 "Valid options are: :destroy, :delete, :nullify, or :restrict"
         end
         add_callback_for(:before_destroy)
@@ -54,12 +62,22 @@ class NoBrainer::Document::Association::HasMany
     end
 
     def eager_load_owner_key;  primary_key; end
+    def eager_load_owner_type; foreign_type; end
     def eager_load_target_key; foreign_key; end
   end
 
   def target_criteria
-    @target_criteria ||= base_criteria.where(foreign_key => owner.__send__(primary_key))
-                                      .after_find(set_inverse_proc)
+    @target_criteria ||= begin
+      query_criteria = { foreign_key => owner.__send__(primary_key) }
+
+      if metadata.options[:as]
+        query_criteria = query_criteria.merge(
+          foreign_type => owner.root_class.name
+        )
+      end
+
+      base_criteria.where(query_criteria).after_find(set_inverse_proc)
+    end
   end
 
   def read
