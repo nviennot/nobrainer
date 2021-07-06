@@ -337,6 +337,7 @@ describe 'NoBrainer index' do
 
     let!(:doc1) { SimpleDocument.create(:field1 => 'hello', :field2 => 'world') }
     let!(:doc2) { SimpleDocument.create(:field1 => 'ohai',  :field2 => 'yay') }
+    let!(:doc3) { SimpleDocument.create(:field1 => 'hello', :field2 => 'springfield') }
 
     it 'uses the index' do
       SimpleDocument.where(:field12 => ['hello', 'world']).where_indexed?.should == true
@@ -346,6 +347,11 @@ describe 'NoBrainer index' do
     it 'uses an index when possible' do
       SimpleDocument.where(:field1 => 'ohai', :field2 => 'yay').used_index.should == :field12
       SimpleDocument.where(:field1 => 'ohai', :field2 => 'yay').count.should == 1
+    end
+
+    it 'uses a partial index when possible' do
+      SimpleDocument.where(:field1 => 'hello').used_index.should == :field12
+      SimpleDocument.where(:field1 => 'hello').count.should == 2
     end
 
     it 'does not allow to use a field with the same name as an index' do
