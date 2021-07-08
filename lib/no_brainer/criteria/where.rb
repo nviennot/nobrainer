@@ -399,10 +399,41 @@ module NoBrainer::Criteria::Where
       get_usable_indexes(:kind => :compound, :geo => false, :multi => false).each do |index|
         indexed_clauses = index.what.map { |field| clauses[[field]] }
         next unless indexed_clauses.all? { |c| c.try(:compatible_with_index?, index) }
-
         return IndexStrategy.new(self, ast, indexed_clauses, index, :get_all, [indexed_clauses.map(&:value)])
       end
       return nil
+    end
+
+    def find_strategy_compound_partial
+      clauses = get_candidate_clauses(:eq, :between).map { |c| [c.key_path, c] }.to_h
+      return nil unless clauses.present?
+
+      get_usable_indexes(:kind => :compound, :geo => false, :multi => false).each do |index|
+        indexed_clauses = index.what.map { |field| clauses[[field]] }
+        partial_clauses = indexed_clauses.compact
+        pad = indexed_clauses.length - partial_clauses.length
+        if partial_clauses.any? && partial_clauses.all? { |c| c.try(:compatible_with_index?, index) }
+          # can only use partial compound index if:
+          #   * index contains all clause fields
+          next unless (clauses.values & partial_clauses) == clauses.values
+          #   * all clause fields come first in the indexed clauses (unused indexed fields are at the end)
+          next unless indexed_clauses.last(pad).all?(&:nil?)
+          #   * all clause fields are :eq, except the last (which may be :between)
+          next unless partial_clauses[0..-2].all? { |c|  c.op == :eq }
+
+          # use range query to cover unused index fields
+          left_bound  = partial_clauses.map(&:value)
+          right_bound = partial_clauses.map(&:value)
+          if (clause = partial_clauses[-1]).op == :between
+            left_bound[-1] = clause.value.min
+            right_bound[-1] = clause.value.max
+          end
+          left_bound.append *Array.new(pad, RethinkDB::RQL.new.minval)
+          right_bound.append *Array.new(pad, RethinkDB::RQL.new.maxval)
+          return IndexStrategy.new(self, ast, partial_clauses, index, :between, [left_bound, right_bound], :right_bound => :closed)
+        end
+      end
+      nil
     end
 
     def find_strategy_hidden_between
@@ -454,7 +485,7 @@ module NoBrainer::Criteria::Where
     def find_strategy
       return nil unless ast.try(:clauses).present? && !criteria.without_index?
       case ast.op
-      when :and then find_strategy_compound || find_strategy_canonical || find_strategy_hidden_between
+      when :and then find_strategy_compound || find_strategy_canonical || find_strategy_hidden_between || find_strategy_compound_partial
       when :or  then find_strategy_union
       end
     end
