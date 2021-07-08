@@ -354,6 +354,14 @@ describe 'NoBrainer index' do
       SimpleDocument.where(:field1 => 'hello').count.should == 2
     end
 
+    it 'uses a partial index with range' do
+      SimpleDocument.where(:field1 => 'hello', :field2 => ('t'..'z')).used_index.should == :field12
+      SimpleDocument.where(:field1 => 'hello', :field2 => ('t'..'z')).count.should == 1
+
+      SimpleDocument.where(:field1 => 'hello', :field2 => ('s'..'x')).used_index.should == :field12
+      SimpleDocument.where(:field1 => 'hello', :field2 => ('s'..'x')).count.should == 2
+    end
+
     it 'does not allow to use a field with the same name as an index' do
       SimpleDocument.index :index_name, [:field1, :field2]
       expect { SimpleDocument.field :index_name }
